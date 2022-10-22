@@ -1,0 +1,5 @@
+plots/
+
+./eeg.py
+./endplots.py
+./startplots.py

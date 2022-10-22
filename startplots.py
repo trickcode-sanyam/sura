@@ -12,6 +12,9 @@ for x in os.walk(data_path):
     subjects = x[1]
     break
 
+epochs_list=[]
+# raw_filt_list=[]
+
 for subject in subjects:
     
     subject_idx = subject[7:]
@@ -23,7 +26,7 @@ for subject in subjects:
         bids_fname = (data_path +subject+'/sst/sst_'+subject_idx+'_'+str(j+1)+'.vhdr')
         raw = mne.io.read_raw_brainvision(bids_fname, preload=True, verbose=False)
         raw.info['line_freq'] = 50.
-        
+        # raw_filt_list.append(raw.copy().filter(0.1,50))
         # Set montage
         montage = mne.channels.make_standard_montage('easycap-M1')
         raw.set_montage(montage, verbose=False)
@@ -32,9 +35,9 @@ for subject in subjects:
         raw.set_eeg_reference('average', projection=False, verbose=False)
         
         # Apply bandpass filter
-        raw.filter(l_freq=0.1, h_freq=None, fir_design='firwin', verbose=False)
+        raw.filter(l_freq=0.1, h_freq=30, fir_design='firwin', verbose=False)
         
-        events, _ = mne.events_from_annotations(raw, verbose=False)
+        events, event_dict = mne.events_from_annotations(raw, verbose=False)
         
         sfreq = raw.info['sfreq']
         
@@ -60,6 +63,12 @@ for subject in subjects:
                 
         all_ch_data.append(raw.get_data())
         
+        epochs_list.append( mne.Epochs(raw,
+                    events, None,
+                    -0.5, 1,
+                    baseline=(None,0), 
+                    preload=True
+                   ) )
     
     save_path = subject+'/start/'
     for path in [save_path+'go',save_path+'nogo',save_path+'both']:
@@ -110,8 +119,8 @@ for subject in subjects:
             min_error.append(mean-std)
         
         plt.plot(time,ch_mean_data, color='b')
-        plt.fill_between(time, max_error, min_error, color='b', alpha=.1)
-        plt.savefig('plots/'+save_path+"go/"+ch_name+".png")
+        # plt.fill_between(time, max_error, min_error, color='b', alpha=.1)
+        # plt.savefig('plots/'+save_path+"go/"+ch_name+".png")
         
         ch_nogo_events_data = []
         for j in range(2):
@@ -121,7 +130,7 @@ for subject in subjects:
                 start_frame = start_frame_indices[idx]
                 end_frame = end_frame_indices[idx]
                 ch_nogo_events_data.append(ch_data[j][start_frame-250:start_frame+500])
-                # plt.axvline(x = (-start_frame+end_frame)*1000/sfreq, color = 'r', alpha=0.05)
+                plt.axvline(x = (-start_frame+end_frame)*1000/sfreq, color = 'r', alpha=0.05)
             
         ch_nogo_events_data_per_frame = np.array(ch_nogo_events_data).T
             
@@ -135,7 +144,7 @@ for subject in subjects:
             max_error.append(mean+std)
             min_error.append(mean-std)
        
-        # plt.plot(time,ch_mean_data, color='r')
+        plt.plot(time,ch_mean_data, color='r')
         # plt.fill_between(time, max_error, min_error, color='r', alpha=.1)
         # plt.savefig('plots/'+save_path+"nogo/"+ch_name+".png")
         
